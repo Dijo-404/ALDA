@@ -1,15 +1,18 @@
 # ALDA
+
 ArduPilot Log Diagnosis Assistant
 
 ALDA is an AI-assisted diagnostic tool for ArduPilot `.bin` logs. It automatically extracts key features, analyzes telemetry data for common failure patterns, and provides actionable suggestions to resolve issues.
 
 ## Features
+
 - Analyzes vibration, EKF variance, GPS degradation, compass interference, power issues, and motor imbalance.
 - Generates visual multi-panel diagnostic plots for insightful tracking.
 - Friendly command-line interface with a clean report summary.
 - Modular architecture allowing for easy integration into other pipelines.
 
 ## Project Structure
+
 ```text
 ALDA/
 ├── main.py          # Command-line entry point
@@ -20,6 +23,7 @@ ALDA/
 ```
 
 ## System Flow Diagram
+
 ```mermaid
 graph TD
     A[main.py: CLI Input] -->|Log File Path| B[log_val.py: analyze_log]
@@ -34,18 +38,23 @@ graph TD
 ```
 
 ## Prerequisites
+
 Ensure you have the required Python packages installed:
+
 ```bash
 pip install numpy pandas matplotlib pymavlink
 ```
 
 ## Usage
+
 Run the main script by providing the path to an ArduPilot `.bin` log:
+
 ```bash
 python main.py <path_to_log.bin>
 ```
 
 You can also view the current classification thresholds by running:
+
 ```bash
 python main.py <path_to_log.bin> --show-thresholds
 ```
