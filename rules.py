@@ -193,3 +193,4 @@ def classify(features):
         candidates = updated
 
     return candidates
+Rename project from ALDA to alda
