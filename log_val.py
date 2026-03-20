@@ -1,16 +1,3 @@
-"""
-ArduPilot AI-Assisted Log Diagnosis - Demo v0.1
-Author: Dijo (GSoC 2026 Applicant)
-Repo:   github.com/Dijo-404
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, version 3.
-https://www.gnu.org/licenses/gpl-3.0.html
-
-Usage:  python log_val.py <path_to_log.bin>
-"""
-
 import sys
 import os
 import numpy as np
@@ -33,7 +20,6 @@ except ImportError:
 from rules import THRESHOLDS, FAILURE_COLORS, FIXES, classify
 
 
-# -- Data Parsers -------------------------------------------------------------
 THRESHOLDS = {
     "vibe_warn":      30.0,   # m/s^2  - VIBE.VibeX/Y/Z warning level
     "vibe_crit":      60.0,   # m/s^2  - VIBE.VibeX/Y/Z critical level
@@ -60,7 +46,6 @@ FAILURE_COLORS = {
 }
 
 
-# -- Log Parser ---------------------------------------------------------------
 def parse_log(filepath):
     """Parse ArduPilot .bin log and extract key telemetry streams."""
     mlog = mavutil.mavlink_connection(filepath, robust_parsing=True)
@@ -94,7 +79,6 @@ def parse_log(filepath):
         except Exception:
             continue
 
-    # Convert to DataFrames
     dfs = {}
     for mtype, d in data.items():
         entries = d.get("entries", [])
@@ -111,12 +95,10 @@ def parse_log(filepath):
     return dfs, flight_time, msg_counts
 
 
-# -- Feature Extractor --------------------------------------------------------
 def extract_features(dfs):
     """Extract diagnostic features from parsed telemetry."""
     features = {}
 
-    # -- VIBE features --
     if "VIBE" in dfs:
         vdf = dfs["VIBE"]
         for ax in ["VibeX", "VibeY", "VibeZ"]:
@@ -129,7 +111,6 @@ def extract_features(dfs):
                 if len(vdf) > 1 else vdf["Clip0"].sum()
             )
 
-    # -- EKF features --
     for ekftype in ["EKF4", "EKF1"]:
         if ekftype in dfs:
             edf = dfs[ekftype]
@@ -138,7 +119,6 @@ def extract_features(dfs):
                     features[f"ekf_{col.lower()}_max"] = float(edf[col].max())
             break
 
-    # -- GPS features --
     if "GPS" in dfs:
         gdf = dfs["GPS"]
         if "HDop" in gdf.columns:
@@ -147,7 +127,6 @@ def extract_features(dfs):
         if "NSats" in gdf.columns:
             features["gps_nsats_min"] = int(gdf["NSats"].min())
 
-    # -- Battery features --
     if "BAT" in dfs:
         bdf = dfs["BAT"]
         if "Volt" in bdf.columns:
@@ -157,7 +136,6 @@ def extract_features(dfs):
                 volt_diff = bdf["Volt"].diff() / bdf["time"].diff().replace(0, np.nan)
                 features["bat_volt_drop_rate"] = float(volt_diff.min())
 
-    # -- Compass features --
     if "COMPASS" in dfs:
         cdf = dfs["COMPASS"]
         for axis_set in [["MagX","MagY","MagZ"], ["Mag2X","Mag2Y","Mag2Z"]]:
@@ -167,7 +145,6 @@ def extract_features(dfs):
                 features["mag_field_mean"]  = float(mag_field.mean())
                 break
 
-    # -- ATT divergence --
     if "ATT" in dfs:
         adf = dfs["ATT"]
         if "DesRoll" in adf.columns and "Roll" in adf.columns:
@@ -175,13 +152,11 @@ def extract_features(dfs):
         if "DesPitch" in adf.columns and "Pitch" in adf.columns:
             features["att_pitch_err_max"] = float((adf["DesPitch"] - adf["Pitch"]).abs().max())
 
-    # -- RC failsafe --
     if "ERR" in dfs:
         edf = dfs["ERR"]
         if "Subsys" in edf.columns:
             features["rc_failsafe_count"] = int((edf["Subsys"] == 3).sum())
 
-    # -- ESC motor spread --
     if "ESC" in dfs:
         esdf = dfs["ESC"]
         rpm_cols = [c for c in esdf.columns if "RPM" in c.upper() or c.startswith("Rpm")]
@@ -195,7 +170,6 @@ def extract_features(dfs):
     return features
 
 
-# -- Visualisation -------------------------------------------------------------
 def plot_diagnosis(dfs, features, results, logname, flight_time, out_dir):
     """Generate and save a multi-panel diagnostic plot."""
     root_cause, confidence, evidence = results[0]
@@ -241,13 +215,11 @@ def plot_diagnosis(dfs, features, results, logname, flight_time, out_dir):
             t  = df["time"] - df["time"].iloc[0]
             ax.plot(t, df[field], color=lcolor, linewidth=0.9, alpha=0.9)
 
-            # Overlay DesRoll on ATT panel
             if mtype == "ATT" and "DesRoll" in df.columns:
                 ax.plot(t, df["DesRoll"], color="#F39C12", linewidth=0.8,
                         alpha=0.7, linestyle="--", label="DesRoll")
                 ax.legend(fontsize=6, facecolor="#161B22", labelcolor="#C9D1D9")
 
-            # Threshold lines
             if warn is not None:
                 ax.axhline(warn, color="#F39C12", linewidth=0.8,
                            linestyle="--", alpha=0.8, label=f"warn={warn}")
@@ -261,7 +233,6 @@ def plot_diagnosis(dfs, features, results, logname, flight_time, out_dir):
                     ha="center", va="center", color="#8B949E",
                     fontsize=8, transform=ax.transAxes)
 
-    # -- Summary panel (bottom full-width) --
     ax_s = fig.add_subplot(gs[2, :])
     ax_s.set_facecolor("#161B22")
     ax_s.axis("off")
@@ -297,7 +268,6 @@ def plot_diagnosis(dfs, features, results, logname, flight_time, out_dir):
               verticalalignment="top", color="#C9D1D9",
               fontfamily="monospace")
 
-    # Save
     outpath = os.path.join(out_dir, "diagnosis_output.png")
     plt.savefig(outpath, dpi=160, bbox_inches="tight",
                 facecolor=fig.get_facecolor())
@@ -305,7 +275,6 @@ def plot_diagnosis(dfs, features, results, logname, flight_time, out_dir):
     return outpath
 
 
-# -- CLI Report ----------------------------------------------------------------
 def print_report(results, features, logname, flight_time):
     B = "\033[1m";  R = "\033[0m"
     RED = "\033[91m"; YEL = "\033[93m"
@@ -347,7 +316,6 @@ def print_report(results, features, logname, flight_time):
     logging.info("\n" + "=" * w + "\n")
 
 
-# -- Main ----------------------------------------------------------------------
 def analyze_log(filepath):
     if not os.path.exists(filepath):
         logging.error(f"File not found: {filepath}")

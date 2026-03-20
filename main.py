@@ -1,3 +1,16 @@
+"""
+ArduPilot AI-Assisted Log Diagnosis - v0.1
+Author: Dijo 
+Repo:   github.com/Dijo-404/alda
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+https://www.gnu.org/licenses/gpl-3.0.html
+
+Usage:  python main.py <path_to_log.bin>
+"""
+
 import sys
 import argparse
 from log_val import analyze_log
@@ -17,7 +30,6 @@ def main():
         print("---------------------------------------")
         print()
 
-    # Log validation incorporates the rules, parsing, and plotting.
     outpath = analyze_log(args.log_file)
     print(f"Analysis complete. Report saved: {outpath}")
 

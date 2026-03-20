@@ -1,4 +1,3 @@
-# -- Thresholds (from ArduPilot official documentation) ----------------------
 THRESHOLDS = {
     "vibe_warn":      30.0,   # m/s^2  - VIBE.VibeX/Y/Z warning level
     "vibe_crit":      60.0,   # m/s^2  - VIBE.VibeX/Y/Z critical level
@@ -24,7 +23,6 @@ FAILURE_COLORS = {
     "unknown":               "#95A5A6",
 }
 
-# -- Fix Suggestions ----------------------------------------------------------
 FIXES = {
     "vibration_high": [
         "Add vibration damping foam/gel mounts between FC and frame",
@@ -82,7 +80,6 @@ FIXES = {
     ],
 }
 
-# -- Rule-Based Classifier + Causal Arbiter -----------------------------------
 def classify(features):
     """
     Rule-based classifier using official ArduPilot threshold values.
@@ -92,7 +89,6 @@ def classify(features):
     T = THRESHOLDS
     candidates = []
 
-    # -- Vibration --
     vibe_max = max(
         features.get("vibe_vibex_max", 0),
         features.get("vibe_vibey_max", 0),
@@ -110,7 +106,6 @@ def classify(features):
         candidates.append(("vibration_high", conf,
             f"VIBE max = {vibe_max:.1f} m/s^2 (warning >= {T['vibe_warn']}) | Clips: {clip}"))
 
-    # -- EKF variance --
     ekf_max = max(
         features.get("ekf_sv_max", 0),
         features.get("ekf_sp_max", 0),
@@ -121,7 +116,6 @@ def classify(features):
         candidates.append(("ekf_failure", conf,
             f"EKF variance max = {ekf_max:.3f} (gate >= {T['ekf_var_warn']})"))
 
-    # -- GPS --
     hdop  = features.get("gps_hdop_max", 0)
     nsats = features.get("gps_nsats_min", 99)
     if hdop >= T["hdop_warn"] or nsats < T["nsats_warn"]:
@@ -131,14 +125,12 @@ def classify(features):
         candidates.append(("gps_glitch", min(0.90, conf),
             f"GPS HDop max = {hdop:.2f} (warn >= {T['hdop_warn']}) | NSats min = {nsats}"))
 
-    # -- Compass --
     mag_range = features.get("mag_field_range", 0)
     if mag_range > 200:
         conf = min(0.93, 0.60 + mag_range / 1000)
         candidates.append(("compass_interference", conf,
             f"Mag field range = {mag_range:.1f} uT (high variation = interference)"))
 
-    # -- Battery --
     bat_drop = features.get("bat_volt_drop_rate", 0)
     bat_min  = features.get("bat_volt_min", 99)
     if bat_drop < -T["bat_sag"] or bat_min < 3.3:
@@ -146,7 +138,6 @@ def classify(features):
         candidates.append(("power_issue", conf,
             f"Bat drop rate = {bat_drop:.3f} V/s | min volt = {bat_min:.2f}V"))
 
-    # -- Motor imbalance --
     rpm_spread = features.get("motor_rpm_spread_max", 0)
     att_roll   = features.get("att_roll_err_max",  0)
     att_pitch  = features.get("att_pitch_err_max", 0)
@@ -165,7 +156,6 @@ def classify(features):
         candidates.append(("motor_imbalance", min(0.92, conf),
             "  |  ".join(parts) or "ATT divergence detected"))
 
-    # -- RC failsafe --
     rc_fs = features.get("rc_failsafe_count", 0)
     if rc_fs > 0:
         candidates.append(("rc_failsafe", min(0.95, 0.80 + rc_fs * 0.05),
@@ -177,14 +167,12 @@ def classify(features):
 
     candidates.sort(key=lambda x: x[1], reverse=True)
 
-    # -- Causal arbiter: vibration causes EKF degradation --
     classes = [c[0] for c in candidates]
     if "vibration_high" in classes and "ekf_failure" in classes:
         vi = classes.index("vibration_high")
         ei = classes.index("ekf_failure")
         if vi > ei:
             candidates[vi], candidates[ei] = candidates[ei], candidates[vi]
-        # Annotate EKF as downstream
         updated = []
         for cls, conf, ev in candidates:
             if cls == "ekf_failure":
@@ -193,4 +181,3 @@ def classify(features):
         candidates = updated
 
     return candidates
-Rename project from ALDA to alda
