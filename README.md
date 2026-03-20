@@ -47,7 +47,7 @@ graph TD
 Ensure you have the required Python packages installed:
 
 ```bash
-pip install numpy pandas matplotlib pymavlink
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -63,3 +63,5 @@ You can also view the current classification thresholds by running:
 ```bash
 python main.py <path_to_log.bin> --show-thresholds
 ```
+
+## Example Run
