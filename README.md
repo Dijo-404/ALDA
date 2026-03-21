@@ -1,4 +1,4 @@
-# ALDA
+# alda
 
 ArduPilot Log Diagnosis Assistant.
 
@@ -134,7 +134,7 @@ Run classifier-focused tests:
 python -m pytest -q tests/test_rules.py
 ```
 
-## Example Dataset Link
+## Log-File Link
 
 ```text
 https://discuss.ardupilot.org/uploads/default/original/3X/7/6/76e9fe83154fe88ff318770a60b493056acb5ad0.bin
