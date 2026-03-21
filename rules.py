@@ -173,9 +173,23 @@ def classify(features):
             f" | max PWM = {max_pwm:.0f}us"))
 
     rc_fs = features.get("rc_failsafe_count", 0)
-    if rc_fs > 0:
-        candidates.append(("rc_failsafe", min(0.95, 0.80 + rc_fs * 0.05),
-            f"RC failsafe triggered {rc_fs}x (ERR.Subsys=3)"))
+    auto_modes = features.get("auto_mode_switch_count", 0)
+    mode_changes = features.get("mode_change_count", 0)
+
+    if rc_fs > 0 or auto_modes > 0:
+        conf = 0.80
+        parts = []
+        if rc_fs > 0:
+            conf += min(0.12, rc_fs * 0.05)
+            parts.append(f"ERR.Subsys=3 triggered {rc_fs}x")
+        if auto_modes > 0:
+            conf += min(0.10, auto_modes * 0.05)
+            detail = f"Auto RTL/LAND switch {auto_modes}x without pilot input"
+            if mode_changes > 0:
+                detail += f" ({mode_changes} mode records)"
+            parts.append(detail)
+        candidates.append(("rc_failsafe", min(0.95, conf),
+            "  |  ".join(parts)))
 
     if not candidates:
         return [("unknown", 0.0,
@@ -195,5 +209,20 @@ def classify(features):
                 ev += "  [downstream of vibration]"
             updated.append((cls, conf, ev))
         candidates = updated
+
+    classes = [c[0] for c in candidates]
+    if "power_issue" in classes and "vibration_high" in classes:
+        bat_drop = features.get("bat_volt_drop_rate", 0)
+        if bat_drop < -2.0:
+            pi = classes.index("power_issue")
+            vi = classes.index("vibration_high")
+            if pi > vi:
+                candidates[pi], candidates[vi] = candidates[vi], candidates[pi]
+                updated = []
+                for cls, conf, ev in candidates:
+                    if cls == "vibration_high":
+                        ev += "  [downstream of power loss]"
+                    updated.append((cls, conf, ev))
+                candidates = updated
 
     return candidates

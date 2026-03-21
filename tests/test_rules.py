@@ -78,3 +78,33 @@ def test_thrust_loss_triggered_by_motor_saturation():
 
     assert thrust_rows
     assert "saturated" in thrust_rows[0][2]
+
+
+def test_rc_failsafe_triggered_by_auto_mode_switch():
+    features = {
+        "auto_mode_switch_count": 2,
+        "mode_change_count": 7,
+    }
+
+    results = classify(features)
+    rows = [row for row in results if row[0] == "rc_failsafe"]
+
+    assert rows
+    assert "Auto RTL/LAND switch" in rows[0][2]
+
+
+def test_catastrophic_voltage_drop_overrides_vibration_root_cause():
+    features = {
+        "vibe_vibex_max": 65.0,
+        "vibe_vibey_max": 40.0,
+        "vibe_vibez_max": 35.0,
+        "bat_volt_drop_rate": -2.5,
+        "bat_volt_min": 3.0,
+    }
+
+    results = classify(features)
+
+    assert results[0][0] == "power_issue"
+    vibration_rows = [row for row in results if row[0] == "vibration_high"]
+    assert vibration_rows
+    assert "[downstream of power loss]" in vibration_rows[0][2]

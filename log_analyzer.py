@@ -57,7 +57,6 @@ def parse_log(filepath):
         if entries:
             dfs[mtype] = pd.DataFrame(entries).sort_values("time").reset_index(drop=True)
 
-    total_msgs = sum(msg_counts.values())
     flight_time = 0
     for mtype in ["GPS", "ATT", "VIBE", "BAT"]:
         if mtype in dfs and len(dfs[mtype]) > 1:
@@ -145,6 +144,14 @@ def extract_features(dfs):
         edf = dfs["ERR"]
         if "Subsys" in edf.columns:
             features["rc_failsafe_count"] = int((edf["Subsys"] == 3).sum())
+
+    if "MODE" in dfs:
+        mdf = dfs["MODE"]
+        if "Mode" in mdf.columns:
+            auto_rtl = (mdf["Mode"] == 11).sum()
+            auto_land = (mdf["Mode"] == 9).sum()
+            features["auto_mode_switch_count"] = int(auto_rtl + auto_land)
+            features["mode_change_count"] = int(len(mdf))
 
     if "ESC" in dfs:
         esdf = dfs["ESC"]
